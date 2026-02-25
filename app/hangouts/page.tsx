@@ -20,8 +20,21 @@ export default function HangoutsPage() {
     try {
       setError("");
       const res = await fetch("/api/suggestions", { cache: "no-store" });
-      const data = await res.json();
-      if (!data?.ok) throw new Error(data?.error || "Failed to load suggestions");
+      const text = await res.text();
+
+      let data: any;
+      try {
+        data = JSON.parse(text);
+      } catch {
+        throw new Error(
+          `API returned non-JSON (${res.status}). Add MONGODB_URI + MONGODB_DB on Vercel and whitelist 0.0.0.0/0 in Atlas.`
+        );
+      }
+
+      if (!res.ok || !data?.ok) {
+        throw new Error(data?.error || `Request failed (${res.status})`);
+      }
+
       setItems(data.items || []);
     } catch (e: any) {
       setError(e?.message || "Unknown error");
@@ -30,15 +43,13 @@ export default function HangoutsPage() {
 
   useEffect(() => {
     load();
-    const t = setInterval(load, 2000);
+    const t = setInterval(load, 5000);
     return () => clearInterval(t);
   }, []);
 
   return (
     <main style={{ padding: 20, fontFamily: "system-ui, sans-serif" }}>
-      <h1 style={{ fontSize: 24, fontWeight: 700 }}>
-        Next Hangout Generator
-      </h1>
+      <h1 style={{ fontSize: 24, fontWeight: 700 }}>Next Hangout Generator</h1>
 
       <p style={{ color: "#555", marginTop: 6 }}>
         Live feed of suggestions and votes. Auto-selects the next hangout at 2 approvals and 0 rejects.
